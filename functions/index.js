@@ -4,6 +4,7 @@ const ping = require("ping");
 
 admin.initializeApp(functions.config().firebase);
 const database = admin.database();
+const firebaseCloudMessage = admin.messaging();
 
 exports.test = functions.https.onRequest((request, response) => {
   response.send("Hello from Firebase!");
@@ -30,13 +31,12 @@ exports.onUrlDelete = functions.database.ref("userUrls/{userId}/{urlId}")
       database.ref("urls/" + urlId).remove();
     });
 
-exports.checkStatus = functions.pubsub.schedule("every 45 minutes")
+exports.checkStatus = functions.pubsub.schedule("every 55 minutes")
     .onRun((context)=>{
       database.ref("urls").get().then((snapshot)=>{
         Object.values(snapshot.val()).forEach((value)=>{
           ping.promise
               .probe(value["url"]).then((res)=>{
-                console.log(res.alive);
                 if (res.alive == false) {
                   database.ref("userNotifications/" + value["owner"])
                       .push().set({
@@ -44,6 +44,23 @@ exports.checkStatus = functions.pubsub.schedule("every 45 minutes")
                         "title": value["name"] + " is offline",
                         "subtitle": value["url"],
                         "timestamp": new Date().getTime(),
+                      });
+                  database.ref("userFcmTokens/" + value["owner"]).get()
+                      .then((snapshot)=>{
+                        console.log(snapshot.val());
+                        firebaseCloudMessage
+                            .send({token: snapshot.val(),
+                              notification: {title: value["name"] +
+                               " is offline",
+                              body: value["url"]}, android: {
+                                priority: "high",
+                              }}).then((response) => {
+                              console
+                                  .log("Successfully sent message:", response);
+                              return {success: true};
+                            }).catch((error) => {
+                              return {error: error.code};
+                            });
                       });
                 }
               });
