@@ -17,6 +17,7 @@ exports.onUrlCreate = functions.database.ref("userUrls/{userId}/{urlId}")
       const urlId = snapshot.key;
       const url = snapshot.val();
       url["owner"] = context.params.userId;
+      url["live"] = true;
       database.ref("urls/" + urlId).set(url);
     });
 
@@ -33,40 +34,44 @@ exports.onUrlDelete = functions.database.ref("userUrls/{userId}/{urlId}")
       database.ref("urls/" + urlId).remove();
     });
 
-exports.checkStatus = functions.pubsub.schedule("every 55 minutes")
+exports.checkStatus = functions.pubsub.schedule("every 5 minutes")
     .onRun((context)=>{
       database.ref("urls").get().then((snapshot)=>{
-        Object.values(snapshot.val()).forEach((value)=>{
+        snapshot.forEach((childSnapshot)=>{
+          const value = childSnapshot.val();
+          const key = childSnapshot.key;
           let url = value["url"];
           if (url.substring(0, 5) == "https") {
-            httpsCall(url, value);
+            httpsCall(url, key, value);
           } else {
             if (url.substring(0, 4) == "http") {
-              httpCall(url, value);
+              httpCall(url, key, value);
             } else {
               url = "http://" + url;
-              httpCall(url, value);
+              httpCall(url, key, value);
             }
           }
         });
       });
 
-      function httpCall(url, value) {
+      function httpCall(url, key, value) {
         http.get(url, (res) => {
           console.log("statusCode:", res.statusCode);
-          statusCheck(res.statusCode, value);
+          statusCheck(res.statusCode, key, value);
         }).on("error", (e) => {
           console.error(e.code);
+          updateLive(key, false);
           onCallError(e, value);
         });
       }
 
-      function httpsCall(url, value) {
+      function httpsCall(url, key, value) {
         https.get(url, (res) => {
           console.log("statusCode:", res.statusCode);
-          statusCheck(res.statusCode, value);
+          statusCheck(res.statusCode, key, value);
         }).on("error", (e) => {
           console.error(e.code);
+          updateLive(key, false);
           onCallError(e, value);
         });
       }
@@ -98,22 +103,41 @@ exports.checkStatus = functions.pubsub.schedule("every 55 minutes")
             });
       }
 
-      function statusCheck(code, value) {
+      function statusCheck(code, key, value) {
         if (code == 500) {
+          updateLive(key, false);
           handleNotification(code, "Internal Server Error", value);
         } else if (code == 502) {
+          updateLive(key, false);
           handleNotification(code, "Bad Gateway", value);
         } else if (code == 503) {
+          updateLive(key, false);
           handleNotification(code, "Service Unavailable", value);
         } else if (code == 400) {
+          updateLive(key, false);
           handleNotification(code, "Bad Request", value);
         } else if (code == 401) {
+          updateLive(key, false);
           handleNotification(code, "Unauthenticated", value);
         } else if (code == 403) {
+          updateLive(key, false);
           handleNotification(code, "Unauthorised", value);
         } else if (code == 404) {
+          updateLive(key, false);
           handleNotification(code, "Not Found", value);
+        } else if (code == 200 || code == 301 || code == 307) {
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == false) {
+                  handleNotification(code, "Back Online", value);
+                }
+              });
+          updateLive(key, true);
         }
+      }
+
+      function updateLive(key, state) {
+        database.ref("urls/" + key).update({"live": state});
       }
 
       function handleNotification(code, message, value) {
