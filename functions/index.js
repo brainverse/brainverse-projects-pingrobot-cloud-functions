@@ -105,34 +105,69 @@ exports.checkStatus = functions.pubsub.schedule("every 5 minutes")
 
       function statusCheck(code, key, value) {
         if (code == 500) {
-          updateLive(key, false);
-          handleNotification(code, "Internal Server Error", value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  handleNotification(code, "Internal Server Error", value);
+                }
+              });
         } else if (code == 502) {
-          updateLive(key, false);
-          handleNotification(code, "Bad Gateway", value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  handleNotification(code, "Bad Gateway", value);
+                }
+              });
         } else if (code == 503) {
-          updateLive(key, false);
-          handleNotification(code, "Service Unavailable", value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  handleNotification(code, "Service Unavailable", value);
+                }
+              });
         } else if (code == 400) {
-          updateLive(key, false);
-          handleNotification(code, "Bad Request", value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  handleNotification(code, "Bad Request", value);
+                }
+              });
         } else if (code == 401) {
-          updateLive(key, false);
-          handleNotification(code, "Unauthenticated", value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  handleNotification(code, "Unauthenticated", value);
+                }
+              });
         } else if (code == 403) {
-          updateLive(key, false);
-          handleNotification(code, "Unauthorised", value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  handleNotification(code, "Unauthorised", value);
+                }
+              });
         } else if (code == 404) {
-          updateLive(key, false);
-          handleNotification(code, "Not Found", value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  handleNotification(code, "Not Found", value);
+                }
+              });
         } else if (code == 200 || code == 301 || code == 307) {
           database.ref("urls/" + key + "/live").get()
               .then((snapshot)=>{
                 if (snapshot.val() == false) {
                   handleNotification(code, "Back Online", value);
+                  updateLive(key, true);
                 }
               });
-          updateLive(key, true);
         }
       }
 
