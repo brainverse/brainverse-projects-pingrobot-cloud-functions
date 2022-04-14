@@ -60,8 +60,13 @@ exports.checkStatus = functions.pubsub.schedule("every 5 minutes")
           statusCheck(res.statusCode, key, value);
         }).on("error", (e) => {
           console.error(e.code);
-          updateLive(key, false);
-          onCallError(e, value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  onCallError(e, value);
+                }
+              });
         });
       }
 
@@ -71,8 +76,13 @@ exports.checkStatus = functions.pubsub.schedule("every 5 minutes")
           statusCheck(res.statusCode, key, value);
         }).on("error", (e) => {
           console.error(e.code);
-          updateLive(key, false);
-          onCallError(e, value);
+          database.ref("urls/" + key + "/live").get()
+              .then((snapshot)=>{
+                if (snapshot.val() == true) {
+                  updateLive(key, false);
+                  onCallError(e, value);
+                }
+              });
         });
       }
 
