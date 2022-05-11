@@ -196,7 +196,8 @@ exports.checkStatus = functions.pubsub.schedule("every 5 minutes")
 
       function updateLive(key, state, owner) {
         database.ref("urls/" + key).update({"live": state});
-        database.ref("userUrls/" + owner + "/" + key).update({"live": state});
+        database.ref("userUrls/" + owner + "/" + key)
+            .update({"live": state, "statusTimestamp": new Date().getTime()});
       }
 
       function handleNotification(key, code, message, value) {
