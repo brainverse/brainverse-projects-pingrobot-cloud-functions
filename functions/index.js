@@ -18,6 +18,7 @@ exports.onUrlCreate = functions.database.ref("userUrls/{userId}/{urlId}")
       const url = snapshot.val();
       url["owner"] = context.params.userId;
       url["live"] = true;
+      url["lastChecked"] = new Date().getTime();
       database.ref("urls/" + urlId).set(url);
     });
 
@@ -45,22 +46,28 @@ exports.onUrlDelete = functions.database.ref("userUrls/{userId}/{urlId}")
       });
     });
 
-exports.checkStatus = functions.pubsub.schedule("every 5 minutes")
+exports.checkStatus = functions.pubsub.schedule("every 1 minutes")
     .onRun((context)=>{
       database.ref("urls").get().then((snapshot)=>{
         snapshot.forEach((childSnapshot)=>{
           const value = childSnapshot.val();
           const key = childSnapshot.key;
-          let url = value["url"];
-          if (url.substring(0, 5) == "https") {
-            httpsCall(url, key, value);
-          } else {
-            if (url.substring(0, 4) == "http") {
-              httpCall(url, key, value);
+
+          if (Math.floor((new Date().getTime() - value["lastChecked"])/60000) ==
+           value["frequency"]) {
+            let url = value["url"];
+            if (url.substring(0, 5) == "https") {
+              httpsCall(url, key, value);
             } else {
-              url = "http://" + url;
-              httpCall(url, key, value);
+              if (url.substring(0, 4) == "http") {
+                httpCall(url, key, value);
+              } else {
+                url = "http://" + url;
+                httpCall(url, key, value);
+              }
             }
+            value["lastChecked"] = new Date().getTime();
+            database.ref("urls/" + key).update(value);
           }
         });
       });
