@@ -16,6 +16,12 @@ exports.onUrlCreate = functions.database.ref("userUrls/{userId}/{urlId}")
     .onCreate((snapshot, context)=>{
       const urlId = snapshot.key;
       const url = snapshot.val();
+      console.log("No frequency:", snapshot.val()["frequency"]);
+
+      // set default frequency to 5 for old app users
+      if (snapshot.val()["frequency"] == null ) {
+        url["frequency"] = 5;
+      }
       url["owner"] = context.params.userId;
       url["live"] = true;
       url["lastChecked"] = new Date().getTime();
