@@ -84,13 +84,7 @@ exports.checkStatus = functions.pubsub.schedule("every 1 minutes")
           statusCheck(res.statusCode, key, value);
         }).on("error", (e) => {
           console.error(e.code);
-          database.ref("urls/" + key + "/live").get()
-              .then((snapshot)=>{
-                if (snapshot.val() == true) {
-                  updateLive(key, false, value["owner"]);
-                  onCallError(key, e, value);
-                }
-              });
+          onCallError(key, e, value);
         });
       }
 
@@ -100,43 +94,37 @@ exports.checkStatus = functions.pubsub.schedule("every 1 minutes")
           statusCheck(res.statusCode, key, value);
         }).on("error", (e) => {
           console.error(e.code);
-          database.ref("urls/" + key + "/live").get()
-              .then((snapshot)=>{
-                if (snapshot.val() == true) {
-                  updateLive(key, false, value["owner"]);
-                  onCallError(key, e, value);
-                }
-              });
+          onCallError(key, e, value);
         });
       }
 
       function onCallError(key, e, value) {
-        database.ref("userNotifications/" + value["owner"])
+        database.ref("internalErrors/")
             .push().set({
-              "status": "WARN",
-              "read": false,
               "title": value["name"],
               "subtitle": e.code + ": " + value["url"],
               "url": key,
               "timestamp": new Date().getTime(),
             });
-        database.ref("userFcmTokens/" + value["owner"]).get()
-            .then((snapshot)=>{
-              console.log(snapshot.val());
-              firebaseCloudMessage
-                  .send({token: snapshot.val(),
-                    notification: {title: value["name"],
-                      body: e.code + ": " + value["url"]}, android: {
-                      priority: "high",
-                    }}).then((response) => {
-                    console
-                        .log("Successfully sent message:",
-                            response);
-                    return {success: true};
-                  }).catch((error) => {
-                    return {error: error.code};
-                  });
-            });
+
+        // SEND NOTIFICATION TO ADMIN. OPTIONAL
+        // database.ref("userFcmTokens/" + admintoken).get()
+        //     .then((snapshot)=>{
+        //       console.log(snapshot.val());
+        //       firebaseCloudMessage
+        //           .send({token: snapshot.val(),
+        //             notification: {title: value["name"],
+        //               body: e.code + ": " + value["url"]}, android: {
+        //               priority: "high",
+        //             }}).then((response) => {
+        //             console
+        //                 .log("Successfully sent message:",
+        //                     response);
+        //             return {success: true};
+        //           }).catch((error) => {
+        //             return {error: error.code};
+        //           });
+        //     });
       }
 
       function statusCheck(code, key, value) {
